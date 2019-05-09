@@ -1,0 +1,86 @@
+---
+
+- name: create postgres user
+  user:
+    name: postgres
+    password: "{{ lookup('password','credentials/' + inventory_hostname + '/user_postgres_password length=32 chars=hexdigits') |password_hash('sha512') }}"
+    state: present
+    update_password: on_create
+
+- name: set PGDATA and PGHOME in /etc/profile
+  blockinfile:
+    dest: /etc/profile
+    marker: "# {mark} ANSIBLE POSTGRES"
+    block: |
+      export PGHOME=/usr/local/pgsql
+      export PGDATA=${PGHOME}/data
+      export PATH=$PATH:$PGHOME/bin
+
+- name: create compile folder
+  file: dest=/root/compile mode=755 state=directory
+
+- name: make sure curl is installed
+  yum: name=curl state=present
+
+- name: clean up if forced to reinstall
+  shell: "systemctl stop postgresql || service postgresql stop || true; rm -f /root/compile/postgresql-{{pg_version}}.tar.gz; rm -rf /root/compile/postgresql-{{pg_version}}; rm -f /usr/local/pgsql; rm -rf /usr/local/pgsql{{pg_version}}"
+  when: pg_force_reinstall == true
+
+- name: download postgres source (version = {{pg_version}})
+  shell: curl -q https://ftp.postgresql.org/pub/source/v{{pg_version}}/postgresql-{{pg_version}}.tar.gz -o /root/compile/postgresql-{{pg_version}}.tar.gz creates=/root/compile/postgresql-{{pg_version}}.tar.gz
+
+- name: install prerequisite packages for compiling postgres
+  yum: name="{{item.name}}" state=present
+  with_items:
+    - name: "@Development Tools"
+    - name: perl-core
+    - name: readline-devel
+    - name: zlib-devel
+    - name: libxml2-devel
+    - name: python-devel
+    - name: perl-ExtUtils-Embed
+
+- name: unpack postgres source
+  shell: cd /root/compile && tar xzvf postgresql-{{pg_version}}.tar.gz creates=/root/compile/postgresql-{{pg_version}}
+
+- name: configure postgres
+  shell: cd /root/compile/postgresql-{{pg_version}} && ./configure --with-libxml --with-perl --with-python --prefix=/usr/local/pgsql{{pg_version}} 
+    creates=/root/compile/postgresql-{{pg_version}}/GNUmakefile
+
+- name: make & make install
+  shell: cd /root/compile/postgresql-{{pg_version}} && make -j4 && make install
+    creates=/usr/local/pgsql{{pg_version}}
+
+- name: contrib make & make install
+  shell: cd /root/compile/postgresql-{{pg_version}}/contrib && make -j4 && make install
+    creates=/usr/local/pgsql{{pg_version}}/lib/pgcrypto.so
+
+- name: create data folder
+  file: dest=/usr/local/pgsql{{pg_version}}/data owner=postgres group=postgres mode=700 state=directory
+
+- name: init a cluster in data folder
+  become: yes
+  become_user: postgres
+  shell: PGHOME=/usr/local/pgsql{{pg_version}} PGDATA=/usr/local/pgsql{{pg_version}}/data /usr/local/pgsql{{pg_version}}/bin/initdb
+    creates=/usr/local/pgsql{{pg_version}}/data/postgresql.conf
+
+# only enable /usr/local/pgsql symlink if it doesn't exist, because it would point to an older cluster, possibly in production
+
+- name: stat the pgsql link
+  stat: path=/usr/local/pgsql
+  register: usr_local_pgsql
+
+- name: create symlink
+  file: dest=/usr/local/pgsql src=/usr/local/pgsql{{pg_version}} state=link
+  when: usr_local_pgsql.stat.exists == False
+
+- name: create the sysvinit startup script
+  shell: cp /root/compile/postgresql-{{pg_version}}/contrib/start-scripts/linux /etc/init.d/postgresql creates=/etc/init.d/postgresql
+  when: usr_local_pgsql.stat.exists == False
+
+- name: set permissions on startup script
+  file: dest=/etc/init.d/postgresql mode=755
+
+- name: reload systemd if we update/create the startup script
+  shell: "systemctl enable postgresql; systemctl disable postgresql; systemctl daemon-reload"
+  when: usr_local_pgsql.stat.exists == False

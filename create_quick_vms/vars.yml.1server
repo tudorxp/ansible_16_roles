@@ -1,0 +1,4 @@
+vhosts:
+  - { name: 'srv1.dev', ip: '10.0.5.11', mem: '768' }
+ 
+vbox: "centos/7"

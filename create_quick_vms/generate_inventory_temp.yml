@@ -1,0 +1,7 @@
+---
+- hosts: localhost
+  tasks:
+  - include_vars: vars.yml
+  - template:
+      src: template_inventory_temp.j2
+      dest: ./inventory

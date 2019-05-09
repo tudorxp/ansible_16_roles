@@ -1,0 +1,47 @@
+---
+- name: create compile/download folder
+  file: dest=/root/compile mode=755 state=directory
+
+- name: make sure curl is installed
+  yum: name=curl state=present
+
+- name: setting jdk filename
+  set_fact:
+    jdk_filename: "jdk-{{ jdk_version | regex_replace('^(.+)-.*$','\\1') }}-linux-x64.tar.gz"
+
+- name: clean up if requested
+  shell: "rm /root/compile/{{ jdk_filename }}; \
+          rm -rf /usr/local/jdk1.{{ jdk_version | regex_replace('^(\\d+)u.*$','\\1') }}.0_{{ jdk_version | regex_replace('^.+u(.+)-.*$','\\1') }}; \
+          rm -f /usr/local/jdk"
+  when: jdk_force_reinstall 
+
+- name: "download jdk binary (version = {{jdk_version}})"
+  shell: > 
+    curl -L "http://download.oracle.com/otn-pub/java/jdk/{{ jdk_version }}/{{ jdk_filename }}" 
+    -o "/root/compile/{{ jdk_filename }}" 
+    -H 'Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com%2Ftechnetwork%2Fjava%2Fjavase%2Fdownloads%2Fjdk8%2Ddownloads%2D2133151.html; oraclelicense=accept-securebackup-cookie;'
+    creates="/root/compile/{{ jdk_filename }}"
+
+- name: unpack jdk
+  shell: tar xzvf /root/compile/{{ jdk_filename }}
+  args: 
+    creates: "/usr/local/jdk1.{{ jdk_version | regex_replace('^(\\d+)u.*$','\\1') }}.0_{{ jdk_version | regex_replace('^.+u(.+)-.*$','\\1') }}"
+    chdir: /usr/local
+ 
+- name: stat the jdk link
+  stat: path=/usr/local/jdk
+  register: usr_local_jdk
+
+- name: create jdk symlink
+  file: 
+    dest: /usr/local/jdk
+    src: "/usr/local/jdk1.{{ jdk_version | regex_replace('^(\\d+)u.*$','\\1') }}.0_{{ jdk_version | regex_replace('^.+u(.+)-.*$','\\1') }}"
+    state: link
+  when: usr_local_jdk.stat.exists == False
+
+- name: add java to PATH in /etc/profile
+  blockinfile:
+    dest: /etc/profile
+    marker: "# {mark} ANSIBLE JDK"
+    block: |
+      export PATH=$PATH:/usr/local/jdk/bin

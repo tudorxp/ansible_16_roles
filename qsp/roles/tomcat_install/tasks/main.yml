@@ -1,0 +1,37 @@
+---
+- name: create compile/download folder
+  file: dest=/root/compile mode=755 state=directory
+
+- name: make sure curl is installed
+  yum: name=curl state=present
+
+- name: setting tomcat filename
+  set_fact:
+    tomcat_filename: "apache-tomcat-{{ tomcat_version }}.tar.gz"
+
+- name: "download tomcat binary tar.gz (version = {{tomcat_version}})"
+  shell: > 
+    curl -L "{{ 'http://archive.apache.org/dist/tomcat/tomcat-' ~ ( tomcat_version | regex_replace('^([0-9]+).*$','\1') ) ~ '/v' ~ tomcat_version ~ '/bin/apache-tomcat-' ~ tomcat_version ~ '.tar.gz' }}"
+    -o "/root/compile/{{ tomcat_filename }}"
+    creates="/root/compile/{{ tomcat_filename }}"
+
+- name: unpack tomcat
+  shell: tar xzvf /root/compile/{{ tomcat_filename }}
+  args: 
+    creates: "/usr/local/apache-tomcat-{{ tomcat_version }}"
+    chdir: /usr/local
+ 
+- name: stat the tomcat link
+  stat: path=/usr/local/tomcat
+  register: usr_local_tomcat
+
+- name: create tomcat symlink
+  file: 
+    dest: /usr/local/tomcat
+    src: "/usr/local/apache-tomcat-{{ tomcat_version }}"
+    state: link
+  when: usr_local_tomcat.stat.exists == False
+
+- name: grant others\' access
+  command: "find /usr/local/tomcat/ -exec chmod o=g {} ;"
+  when: usr_local_tomcat.stat.exists == False

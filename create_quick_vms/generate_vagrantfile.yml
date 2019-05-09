@@ -1,0 +1,14 @@
+
+- hosts: localhost
+  tasks:
+  
+  - include_vars: vars.yml
+
+    # - debug:
+    #     msg: "host {{ item.name }} with ip {{ item.ip }} -> memory {{ item.mem }}"
+    #     var: item
+    #   with_items: "{{ vhosts }}"
+
+  - template: 
+      src: template_vagrantfile.j2
+      dest: ./Vagrantfile

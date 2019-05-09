@@ -1,0 +1,36 @@
+---
+- hosts: localhost
+  vars:
+      ssh_known_hosts_file: "~/.ssh/known_hosts"
+  tasks:
+    - include_vars: vars.yml
+
+    - name: remove potential old ssh known hosts
+      lineinfile: 
+        dest: "{{ ssh_known_hosts_file }}"
+        regexp: '^#*\s*{{ item.ip }}[: ]'
+        state: absent
+      with_items: "{{ vhosts }}"
+
+    - name: add host keys to known hosts file
+      shell: "ssh-keyscan {{ item.ip }} 2>/dev/null >> ~/.ssh/known_hosts"
+      with_items: "{{ vhosts }}"
+
+    - name: generate ssh key
+      shell: 
+        cmd: ssh-keygen -N "" -f ssh_masterkey
+        creates: ssh_masterkey.pub
+
+
+- hosts: all
+  become: yes
+  vars:
+    ansible_ssh_user: vagrant
+    # ansible_ssh_private_key_file: ~/.vagrant.d/insecure_private_key
+  tasks:
+    - user: name=ansible state=present
+    - authorized_key: user=ansible key="{{ lookup('file', 'ssh_masterkey.pub') }}"
+    - lineinfile: 
+        dest: /etc/sudoers
+        line: "ansible ALL=(ALL) NOPASSWD: ALL"
+        state: present

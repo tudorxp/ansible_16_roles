@@ -1,0 +1,56 @@
+---
+
+- name: Installing needed packages for letsencrypt
+  yum: name="{{ item.name }}" state=present
+  with_items:
+    - name: "@Development Tools"
+    - name: "augeas-devel"
+    - name: "python"
+    - name: "augeas"
+    - name: "openssl-devel"
+    - name: "libffi-devel"
+    - name: "python-devel"
+    - name: "python-virtualenv"
+    - name: "python-pip"
+    - name: "dialog"
+
+- name: Creating virtual environment for letsencrypt 
+  pip: virtualenv="{{ letsencrypt_venv }}" virtualenv_site_packages=no name={{ item }} state=latest
+  with_items:
+    - pip
+    - setuptools
+    - letsencrypt
+
+- name: Making sure nginx is stopped
+  service: name=nginx state=stopped
+
+- name: Attempting to get certificates with letsencrypt
+  shell: /usr/local/letsencrypt/bin/letsencrypt certonly --agree-tos --standalone --text --email {{ letsencrypt_email }} {% for le_dom in letsencrypt_domains %} -d {{ le_dom }} {% endfor %} --expand
+  args:
+    creates: "/etc/letsencrypt/live/{{ letsencrypt_domains[0] }}"
+
+- name: Setting letsencrypt renewal cron
+  cron: name="letsencrypt renewal" hour=2 minute=1 weekday=0 job="date &>/tmp/letsencrypt_renew.log; service nginx stop &>>/tmp/letsencrypt_renew.log && /usr/local/letsencrypt/bin/letsencrypt renew &>>/tmp/letsencrypt_renew.log && service nginx start &>>/tmp/letsencrypt_renew.log"
+  
+- name: Install a default configuration
+  template: 
+    src: files/default.conf
+    dest: /etc/nginx/conf.d/default.conf
+    owner: root
+    group: root
+    mode: 0644
+    backup: yes
+
+- name: modify nginx.conf
+  lineinfile:
+    dest: /etc/nginx/nginx.conf
+    regexp: "^{{item.regexp}}"
+    line: "{{item.line}}"
+    backrefs: true
+    backup: true
+  with_items:
+      - { regexp: '^worker_processes', line: 'worker_processes 4;' }
+      - { regexp: '^\s+worker_connections', line: '    worker_connections  4096;' }
+
+- name: enable startup & start
+  service: name=nginx state=started enabled=yes

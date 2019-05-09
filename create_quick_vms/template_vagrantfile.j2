@@ -1,0 +1,29 @@
+
+Vagrant.configure(2) do |config|
+
+  # config.ssh.insert_key = false
+  
+{% for item in vhosts %}
+
+  # vm block 
+  config.vm.define "{{ item.name }}" do |srv|
+
+    srv.vm.hostname = "{{ item.name }}"
+    srv.vm.box = "{{ vbox }}"
+    srv.vm.network :private_network, ip: "{{ item.ip }}"
+
+{% if vbox == 'centos/7' %}
+    srv.vm.synced_folder '.', '/home/vagrant/sync', disabled: true
+{% endif %}
+
+    config.vm.provider :virtualbox do |vb|
+      # vb.customize ["modifyvm", :id, "--memory", "{{ item.mem }}"]
+      vb.memory = "{{ item.mem }}"
+      vb.cpus = 2
+    end
+
+  end
+
+{% endfor %}
+
+end

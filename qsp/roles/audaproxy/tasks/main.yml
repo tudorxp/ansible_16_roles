@@ -1,0 +1,15 @@
+---
+- name: set proxy in /etc/yum.conf 
+# the lineinfile below does not work if libselinux-python is not installed. of course, installing libselinux-python requires the right proxy config...
+  # lineinfile:
+  #   dest: /etc/yum.conf
+  #   regexp: "^proxy="
+  #   line: "proxy=http://{{ proxy }}"
+  #   state: present
+  shell: sed -e 's#proxy=.*#proxy=http://{{ proxy }}#' -i /etc/yum.conf 
+
+- name: set proxy in /etc/environment pt. 1
+  shell: sed -e 's#^http_proxy=.*#http_proxy="http://{{ proxy }}"#' -i /etc/environment 
+
+- name: set proxy in /etc/environment pt. 2
+  shell: sed -e 's#^https_proxy=.*#https_proxy="http://{{ proxy }}"#' -i /etc/environment 

@@ -1,0 +1,98 @@
+---
+
+- name: check if postgres is started - if yes, don't do anything
+  shell: service postgresql status || true
+  register: pgrunning
+  when: pg_drop_old_cluster == true
+
+- name: remove the data folder
+  file: dest="{{ pg_cluster }}" state=absent
+  when: 
+    pg_drop_old_cluster == true and
+    ' server is running' not in pgrunning.stdout 
+
+- name: create the data folder
+  file: dest="{{ pg_cluster }}" state=directory mode=700 owner=postgres group=postgres
+  when: 
+    pg_drop_old_cluster == true and
+    ' server is running' not in pgrunning.stdout 
+
+- name: create /home/postgres/.pgpass
+  file: dest=/home/postgres/.pgpass owner=postgres group=postgres mode=600 state=touch
+  when: 
+    pg_drop_old_cluster == true and
+    ' server is running' not in pgrunning.stdout 
+
+- name: add postgres user password in /home/postgres/.pgpass
+  lineinfile:
+    dest: "/home/postgres/.pgpass"
+    line: "{{ item }}"
+  with_items:
+    - "localhost:5432:postgres:postgres:{{ lookup('password','credentials/' + groups[pg_master_host_ansible_name][0] + '/pgsql_postgres_password length=32 chars=hexdigits') }}"
+    - "{{ pg_master_host_ip }}:5432:*:postgres:{{ lookup('password','credentials/' + groups[pg_master_host_ansible_name][0] + '/pgsql_postgres_password length=32 chars=hexdigits') }}"
+    - "{{ pg_master_host_ip }}:5432:*:repuser:{{ lookup('password','credentials/' + groups[pg_master_host_ansible_name][0] + '/pgsql_repuser_password length=32 chars=hexdigits') }}"
+  when: 
+    pg_drop_old_cluster == true and
+    ' server is running' not in pgrunning.stdout 
+
+- name: copy data from master using pg_basebackup
+  become: yes
+  become_user: postgres
+  shell: PGHOME={{pg_cluster}}/.. PGDATA={{pg_cluster}} {{pg_cluster}}/../bin/pg_basebackup -c fast -X stream -h {{ pg_master_host_ip }} -U repuser -D {{ pg_cluster }}
+    creates={{pg_cluster}}/postgresql.conf
+  when: 
+    pg_drop_old_cluster == true and
+    ' server is running' not in pgrunning.stdout 
+
+
+- name: copy data from master using pg_basebackup
+  become: yes
+  become_user: postgres
+  shell: PGHOME={{pg_cluster}}/.. PGDATA={{pg_cluster}} {{pg_cluster}}/../bin/pg_basebackup -c fast -X stream -h {{ pg_master_host_ip }} -U repuser -D {{ pg_cluster }}
+    creates={{pg_cluster}}/postgresql.conf
+  when: 
+    pg_drop_old_cluster == true and
+    ' server is running' not in pgrunning.stdout 
+
+- name: create recovery.conf
+  template: 
+    src: recovery.conf.j2
+    dest: "{{ pg_cluster }}/recovery.conf"
+    owner: postgres
+    group: postgres
+  when: 
+    pg_drop_old_cluster == true and
+    ' server is running' not in pgrunning.stdout 
+
+- name: set postgresql logs to expire after 90 days
+  cron: name="expire postgres logs" user=postgres minute="33" hour="22" job="find /home/postgres/logs -type f -name '*.csv' -mtime +90 -delete >/dev/null"
+  when: 
+    pg_drop_old_cluster == true and
+    ' server is running' not in pgrunning.stdout 
+
+- name: make sure postgres is enabled (if autostart true)
+  service: name=postgresql enabled=yes
+  when: 
+    pg_drop_old_cluster == true and
+    ' server is running' not in pgrunning.stdout and
+    pg_autostart == true
+
+- name: make sure postgres is disabled (if autostart false)
+  service: name=postgresql enabled=no
+  when: 
+    pg_drop_old_cluster == true and
+    ' server is running' not in pgrunning.stdout and
+    pg_autostart == false
+
+- name: install psycopg2 for python <=> postgresql
+  yum: pkg=python-psycopg2 state=present
+  when: 
+    pg_drop_old_cluster == true and
+    ' server is running' not in pgrunning.stdout
+
+- name: run chown over the whole cluster (because backup files are created as root...)
+  command: chown -R postgres.postgres {{ pg_cluster }}
+
+- name: restart postgresql
+  service: name=postgresql state=restarted
+  when: "' server is running' not in pgrunning.stdout"

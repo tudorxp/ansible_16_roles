@@ -1,0 +1,3 @@
+---
+pg_cluster: "/usr/local/pgsql/data"
+pg_autostart: false

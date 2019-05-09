@@ -1,0 +1,9 @@
+---
+- name: create database {{ database }}
+  postgresql_db: 
+    name="{{ database }}"
+    login_host=localhost
+    login_user=postgres
+    login_password="{{ lookup('password','credentials/' + inventory_hostname + '/pgsql_postgres_password length=32 chars=hexdigits') }}"
+    owner="{{ owner | default('postgres') }}"
+    state=present

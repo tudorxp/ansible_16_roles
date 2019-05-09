@@ -1,0 +1,31 @@
+---
+- name: Install a default configuration
+  template: 
+    src: files/default.conf
+    dest: /etc/nginx/conf.d/default.conf
+    owner: root
+    group: root
+    mode: 0644
+    backup: yes
+
+- name: modify nginx.conf
+  lineinfile:
+    dest: /etc/nginx/nginx.conf
+    regexp: "^{{item.regexp}}"
+    line: "{{item.line}}"
+    backrefs: true
+    backup: true
+  with_items:
+      - { regexp: '^worker_processes', line: 'worker_processes 4;' }
+      - { regexp: '^\s+worker_connections', line: '    worker_connections  4096;' }
+      - { regexp: '^\s+client_max_body_size', line: '    client_max_body_size 10000M;' }
+
+- name: modify nginx.conf part 2
+  lineinfile:
+    dest: /etc/nginx/nginx.conf
+    line: "client_max_body_size 10000M;"
+    state: present
+    insertbefore: '^\s+keepalive_timeout'
+
+- name: enable startup & start
+  service: name=nginx state=started enabled=yes

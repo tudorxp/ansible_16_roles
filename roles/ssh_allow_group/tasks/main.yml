@@ -1,0 +1,6 @@
+---
+- name: add AllowGroup to ssh config
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    line: "AllowGroups {{ group }}"
+    state: present

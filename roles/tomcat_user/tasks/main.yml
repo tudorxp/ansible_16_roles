@@ -1,0 +1,92 @@
+---
+- name: check if catalina home folder actually exists
+  stat: path="{{ catalina_home }}" follow=yes
+  register: stat_result
+
+- name: fail if catalina home does not exist
+  fail: 'msg="catalina home not found in: {{ catalina_home }}"'
+  when: not stat_result.stat.exists
+
+- name: detect /home/user/tomcat & check whether we'll set a .profile
+  set_fact: 
+    do_profile: true
+    user_profile: '{{ tomcat_user_folder | regex_replace("^/home/(?P<userr>\w+)/.*$","\g<userr>") }}'
+  when: tomcat_user_folder | match("^/home/\\w+/.*$")
+
+- name: stat parent folder to determine user
+  stat: path="{{ tomcat_user_folder | regex_replace("^(.*)/[^/]*$","\\1") }}"
+  register: parent_folder
+  when: tomcat_user is not defined
+
+
+- name: check if folder already exists
+  stat: path="{{ tomcat_user_folder }}"
+  register: stat_result2
+
+- name: create tomcat folders
+  file: 
+    dest: "{{ item }}"
+    state: directory
+    owner: "{{ parent_folder.stat.pw_name }}"
+    group: "{{ parent_folder.stat.gr_name }}"
+    recurse: yes
+    mode: 0755
+  with_items:
+    - "{{ tomcat_user_folder }}"
+    - "{{ tomcat_user_folder ~ '/logs' }}"
+    - "{{ tomcat_user_folder ~ '/temp' }}"
+    - "{{ tomcat_user_folder ~ '/conf' }}"
+    - "{{ tomcat_user_folder ~ '/webapps' }}"
+    - "{{ tomcat_user_folder ~ '/work' }}"
+  when: not stat_result2.stat.exists
+
+- name: copy default conf folder
+  shell: cp -a "{{ catalina_home ~ '/conf' }}"  "{{ tomcat_user_folder }}"
+  when: not stat_result2.stat.exists
+
+- name: set conf permissions
+  shell: >
+    chmod 644 {{ tomcat_user_folder ~ '/conf/*' }}  
+    && chown -R {{ parent_folder.stat.pw_name }}.{{ parent_folder.stat.gr_name }} {{ tomcat_user_folder ~ '/conf' }} 
+  when: not stat_result2.stat.exists
+
+- name: create profile
+  file:
+    dest: "{{ '/home/' ~ user_profile ~ '/.bash_profile' }}"
+    state: touch
+    owner: "{{ parent_folder.stat.pw_name }}"
+    group: "{{ parent_folder.stat.gr_name }}"
+    mode: 0644
+  when:
+    stat_result2.stat.exists != True and
+    do_profile is defined and
+    do_profile == True 
+
+- name: set profile
+  blockinfile:
+    dest: "{{ '/home/' ~ user_profile ~ '/.bash_profile' }}"
+    marker: "# {mark} ANSIBLE TOMCAT"
+    block: |
+      export CATALINA_BASE="{{ tomcat_user_folder }}"
+      export CATALINA_PID="{{ tomcat_user_folder ~ '/tomcat.pid' }}"
+      export CATALINA_OPTS="{{ catalina_opts }}"
+  when:
+    stat_result2.stat.exists != True and
+    do_profile is defined and
+    do_profile == True 
+
+- name: set start link
+  file:
+    dest: "{{ tomcat_user_folder ~ '/startTomcat.sh' }}"
+    src: "{{ catalina_home ~ '/bin/startup.sh' }}"
+    state: link
+  when:
+    stat_result2.stat.exists != True
+
+- name: set stop link
+  file:
+    dest: "{{ tomcat_user_folder ~ '/stopTomcat.sh' }}"
+    src: "{{ catalina_home ~ '/bin/shutdown.sh' }}"
+    state: link
+  when:
+    stat_result2.stat.exists != True

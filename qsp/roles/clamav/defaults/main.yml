@@ -1,0 +1,5 @@
+---
+freshclam_http_proxy: ""
+freshclam_http_proxy_port: ""
+# freshclam_http_proxy: http://172.22.44.6
+# freshclam_http_proxy_port: 8080

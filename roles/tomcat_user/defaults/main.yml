@@ -1,0 +1,4 @@
+---
+# tomcat_user_folder: /home/subrogation/tomcat
+catalina_home: /usr/local/tomcat
+catalina_opts: "-Xms1G -Xmx4G -Djava.security.egd=file:/dev/./urandom"

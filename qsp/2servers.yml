@@ -1,0 +1,45 @@
+---
+- hosts: srv1.dev
+  become: yes
+  vars:
+    pg_version: 9.5.3
+    pg_force_reinstall: true
+    jdk_version: 8u102-b14
+    jdk_force_reinstall: true
+    tomcat_version: 8.5.4
+  roles:
+    - selinux
+    - common
+    - ntp 
+    - clamav
+    - postgres_install
+    - role: jdk_install
+    - role: tomcat_install
+    - nginx_conf
+    - { role: create_user, username: 'newproject'  }
+    - { role: tomcat_user, tomcat_user_folder: /home/newproject/tomcat, catalina_opts: '-Xms512m -Xmx768m' }
+    - { role: postgres_master, pg_hba_allow_groups: [ 'srv2.dev'] , pg_hba_allow_ips: [ ] }
+    - { role: postgres_user, username: 'newproject' }
+    - { role: postgres_database, database: 'newproject', owner: 'newproject' }
+
+
+- hosts: srv2.dev
+  become: yes
+  vars:
+    pg_version: 9.5.3
+    pg_force_reinstall: true
+    jdk_version: 8u102-b14
+    jdk_force_reinstall: true
+    tomcat_version: 8.5.4    
+  roles: 
+    - selinux
+    - common
+    - ntp 
+    - clamav
+    - postgres_install
+    - role: jdk_install
+    - role: tomcat_install
+    - nginx_conf
+    - { role: create_user, username: 'newproject'  }
+    - { role: tomcat_user, tomcat_user_folder: /home/newproject/tomcat, catalina_opts: '-Xms512m -Xmx768m' }
+    - { role: postgres_slave, pg_drop_old_cluster: true, pg_master_host_ansible_name: 'srv1.dev', pg_master_host_ip: "10.0.3.2" }

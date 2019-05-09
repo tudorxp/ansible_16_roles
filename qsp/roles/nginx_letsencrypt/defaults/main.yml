@@ -1,0 +1,4 @@
+---
+letsencrypt_venv: /usr/local/letsencrypt
+letsencrypt_domains: "{{ ansible_fqdn }}"
+letsencrypt_email: "webmaster@{{ ansible_fqdn }}"

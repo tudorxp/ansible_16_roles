@@ -1,0 +1,25 @@
+---
+- name: "Make sure postfix is installed"
+  yum: name=postfix state=present
+
+- name: Set postfix origin
+  lineinfile:
+    dest: /etc/postfix/main.cf
+    line: "{{ item }}"
+    state: present
+  with_items:
+    - "myorigin = {{ postfix_simple_origin }}"
+  when: postfix_simple_origin != ""
+
+- name: Set postfix smart host
+  lineinfile:
+    dest: /etc/postfix/main.cf
+    line: "{{ item.new }}"
+    regexp: "{{ item.old }}"
+    state: present
+  with_items:
+    - { old: '^relayhost', new: 'relayhost = {{ postfix_simple_smarthost }}' }
+  when: postfix_simple_smarthost != ""
+
+- name: Restart & enable postfix
+  service: name=postfix state=restarted enabled=yes

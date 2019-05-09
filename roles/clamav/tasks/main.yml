@@ -1,0 +1,29 @@
+---
+- name: "Install ClamAV packages (from epel)"
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - [ clamav, clamav-update ]
+
+- name: Enable freshclam updates
+  lineinfile:
+    dest: /etc/sysconfig/freshclam
+    regexp: '^FRESHCLAM_DELAY=disabled-warn'
+    state: absent
+
+- name: Enable freshclam 
+  lineinfile:
+    dest: /etc/freshclam.conf
+    regexp: '^Example'
+    state: absent
+
+- name: Enable freshclam proxy
+  lineinfile:
+    dest: /etc/freshclam.conf
+    line: "{{ item }}"
+    state: present
+  with_items:
+    - "HTTPProxyServer {{ freshclam_http_proxy }}"
+    - "HTTPProxyPort {{ freshclam_http_proxy_port }}"
+  when: freshclam_http_proxy != ""

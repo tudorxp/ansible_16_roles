@@ -1,0 +1,6 @@
+pg_cluster: "/usr/local/pgsql/data"
+pg_hba_allow_groups: []
+pg_hba_allow_ips: []
+pg_autostart: false
+# pg_shared_buffers_mem: 288
+# pg_wal_keep_segments: 4000

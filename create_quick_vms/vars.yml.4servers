@@ -1,0 +1,7 @@
+vhosts:
+  - { name: 'srv1.dev', ip: '10.0.5.11', mem: '768' }
+  - { name: 'srv2.dev', ip: '10.0.5.12', mem: '768' }
+  - { name: 'srv3.dev', ip: '10.0.5.13', mem: '768' }
+  - { name: 'srv4.dev', ip: '10.0.5.14', mem: '768' }
+ 
+vbox: "centos/7"

@@ -1,0 +1,5 @@
+---
+selinux_mode: permissive
+# policy should be commented if selinux is disabled
+selinux_policy: targeted
+

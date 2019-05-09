@@ -1,0 +1,13 @@
+---
+- name: install python psycopg2 module
+  yum: name=python-psycopg2 state=present
+  
+- name: add user {{ username }}
+  postgresql_user: 
+    name="{{ username }}"
+    login_host=localhost
+    login_user=postgres
+    login_password="{{ lookup('password','credentials/' + inventory_hostname + '/pgsql_postgres_password length=32 chars=hexdigits') }}"
+    password="{{ lookup('password','credentials/' + inventory_hostname + '/pgsql_' + username + '_password length=32 chars=hexdigits') }}"
+    encrypted=yes
+    role_attr_flags="{{ flags }}"

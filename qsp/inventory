@@ -1,0 +1,18 @@
+[srv1.dev]
+10.0.5.11
+
+[srv2.dev]
+10.0.5.12
+
+
+
+[all:vars]
+ansible_ssh_pass='stu'
+ansible_ssh_user=root
+#ansible_ssh_private_key_file=~/.ssh/custom.key
+
+
+
+# to configure per host passwords have one block as below per host and comment above password
+#[srv1.dev:vars]
+#ansible_ssh_pass='stu'

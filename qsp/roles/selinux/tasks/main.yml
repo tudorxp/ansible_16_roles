@@ -1,0 +1,8 @@
+---
+- name: make sure libselinux-python is installed
+  yum: name=libselinux-python state=present
+
+- name: 'Set selinux policy (configured: mode is {{selinux_mode}}, policy is {{ selinux_policy | default(omit) }}'
+  selinux:
+    state: "{{ selinux_mode }}"
+    policy: "{{ selinux_policy | default(omit) }}"

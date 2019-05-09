@@ -1,0 +1,20 @@
+---
+- name: setting nginx yum repo file contents
+  blockinfile:
+    dest: /etc/yum.repos.d/nginx.repo
+    state: present
+    create: yes
+    block: |
+      [nginx]
+      name=nginx repo
+      baseurl=http://nginx.org/packages/centos/$releasever/$basearch/
+      gpgcheck=1
+      enabled=1
+
+- name: Import nginx key
+  rpm_key:
+    key: https://nginx.org/keys/nginx_signing.key
+    state: present
+
+- name: Install nginx
+  yum: pkg=nginx state=present

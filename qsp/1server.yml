@@ -1,0 +1,24 @@
+---
+- hosts: srv1.dev
+  become: yes
+  vars:
+    #pg_version: 9.5.3
+    pg_version: 9.6beta3
+    pg_force_reinstall: true
+    jdk_version: 8u102-b14
+    jdk_force_reinstall: true
+    tomcat_version: 8.5.4
+  roles:
+    - selinux
+    - common
+    - ntp 
+    - clamav
+    - postgres_install
+    - role: jdk_install
+    - role: tomcat_install
+    - nginx_conf
+    - { role: create_user, username: 'newproject'  }
+    - { role: tomcat_user, tomcat_user_folder: /home/newproject/tomcat, catalina_opts: '-Xms512m -Xmx768m' }
+    - { role: postgres_master }
+    - { role: postgres_user, username: 'newproject' }
+    - { role: postgres_database, database: 'newproject', owner: 'newproject' }

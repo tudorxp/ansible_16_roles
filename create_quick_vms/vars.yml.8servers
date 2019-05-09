@@ -1,0 +1,11 @@
+vhosts:
+  - { name: 'srv1.dev', ip: '10.0.5.11', mem: '768' }
+  - { name: 'srv2.dev', ip: '10.0.5.12', mem: '768' }
+  - { name: 'srv3.dev', ip: '10.0.5.13', mem: '768' }
+  - { name: 'srv4.dev', ip: '10.0.5.14', mem: '768' }
+  - { name: 'srv5.dev', ip: '10.0.5.15', mem: '768' }
+  - { name: 'srv6.dev', ip: '10.0.5.16', mem: '768' }
+  - { name: 'srv7.dev', ip: '10.0.5.17', mem: '768' }
+  - { name: 'srv8.dev', ip: '10.0.5.18', mem: '768' }
+ 
+vbox: "centos/7"

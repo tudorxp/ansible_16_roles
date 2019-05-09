@@ -1,0 +1,42 @@
+---
+
+# Tasks to install the NTP server & set the date via ntpdate
+
+- name: Ensure NTP is installed
+  yum: name=ntp state=present
+
+- name: Ensure ntpdate is installed
+  yum: name=ntpdate state=present
+
+- name: Config tinker panic 0
+  lineinfile: > 
+    dest=/etc/ntp.conf
+    line="tinker panic 0"
+    state=present
+
+- name: Config servers pt. 1
+  lineinfile: 
+    dest: /etc/ntp.conf
+    regexp: "^server "
+    state: absent
+  when: ntp_servers != ""
+
+- name: Config servers pt. 2
+  lineinfile: 
+    dest: /etc/ntp.conf
+    line: "server {{ item }}"
+    state: present
+  with_items: "{{ ntp_servers }}"
+  when: ntp_servers != ""
+
+- name: Ensure NTP is stopped
+  service: name=ntpd state=stopped
+  when: ntp_sync_now == true
+
+- name: Synchronize datetime
+  shell: "ntpdate  {{ ntp_sync_now_server }} || true"
+  when: ntp_sync_now == true
+
+- name: Ensure NTP is running
+  service: name=ntpd state=started enabled=yes
+

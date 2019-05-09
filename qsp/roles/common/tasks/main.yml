@@ -1,0 +1,73 @@
+---
+
+- name: Insert some defaults into /etc/profile
+  blockinfile:
+    dest: /etc/profile
+    insertafter: "^unset -f pathmunge"
+    block: |
+      
+      hostcolor=$(tput setaf 105 2>/dev/null)
+      resetcolor=$(tput sgr0 2>/dev/null)
+      export PS1="[\u@\[$hostcolor\]\h\[$resetcolor\] \W]\\$ "
+      alias l="ls -lat"
+      
+    state: present
+
+- name: Set the timezone
+  file: dest=/etc/localtime src=/usr/share/zoneinfo/{{timezone}} state=link force=yes
+
+- name: Install some common & debugging packages
+  yum:
+    state=present
+    pkg={{ item }}
+  with_items: 
+    - elinks 
+    - whois 
+    - psmisc 
+    - iotop 
+    - dstat 
+    - tcpdump 
+    - telnet 
+    - perf 
+    - net-tools 
+    - traceroute 
+    - mtr 
+    - finger 
+    - bind-utils 
+    - nmap-ncat 
+    - procps-ng 
+    - bc
+    - sysstat 
+    - mailx
+    - strace
+    - ltrace
+# centos 7
+  when: ansible_distribution_major_version == "7"
+
+- name: Install some common & debugging packages
+  yum:
+    state=present
+    pkg={{ item }}
+  with_items: 
+    - elinks 
+    - jwhois 
+    - psmisc 
+    - iotop 
+    - dstat 
+    - tcpdump 
+    - telnet 
+    - perf 
+    - net-tools 
+    - traceroute 
+    - mtr 
+    - finger 
+    - bind-utils 
+    - nc 
+    - procps
+    - bc
+    - sysstat 
+    - mailx
+    - strace
+    - ltrace
+# centos 6
+  when: ansible_distribution_major_version == "6"
